@@ -1,0 +1,42 @@
+# One command to stand up Postgres + the runtime worker pool:
+#
+#   docker compose up --build
+#
+# Postgres is published on localhost:5432, so host tools (the `mxr` CLI, or a
+# host-run `serve` that has the agent CLIs installed) can share the same ledger.
+#
+# NOTE: the containerized worker runs the ledger and dispatches API-reach agents
+# (recon, when PERPLEXITY_API_KEY is set). The CLI agents (claude / codex / agy)
+# are NOT installed in the image, so route those to a `serve` on your host — both
+# workers can drain the same Postgres queue at once.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: runtime
+      POSTGRES_PASSWORD: runtime
+      POSTGRES_DB: runtime
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # schema.sql auto-loads when the database is first created (plain CREATE statements)
+      - ./src/runtime/ledger/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runtime -d runtime"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  runtime:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      MYNDAIX_DSN: postgresql://runtime:runtime@postgres:5432/runtime
+      # api-reach agents (recon) work in-container when their key is present:
+      PERPLEXITY_API_KEY: ${PERPLEXITY_API_KEY:-}
+
+volumes:
+  pgdata:

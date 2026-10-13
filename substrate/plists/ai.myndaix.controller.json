@@ -1,0 +1,13 @@
+{
+  "label": "ai.myndaix.controller",
+  "roles": ["factory"],
+  "mutating": true,
+  "program": ["/bin/bash", "{DEPLOY_CLONE}/orchestrator/controller-tick.sh"],
+  "schedule": {"StartInterval": 3600},
+  "run_at_load": true,
+  "abandon_process_group": true,
+  "stdout": "{MYNDAIX_HOME}/orchestrator/controller.out",
+  "env": {"MYNDAIX_DSN": "MYNDAIX_DSN", "MYNDAIX_HOME": "MYNDAIX_HOME", "PATH": "AGENT_CLI_PATH"},
+  "env_literal": {"PLAY_SELF": "{DEPLOY_CLONE}/orchestrator/play-review.sh"},
+  "liveness_max_gap_seconds": 7500
+}

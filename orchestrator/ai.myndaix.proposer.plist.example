@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  S7 proposer (auto-capture's acting rung). OFF unless $ORCH/PROPOSER_ENABLED exists.
+  Install (AFTER: a green dry-run + provisioning the dedicated bot PAT at ~/.myndaix/.proposer-token):
+    cp orchestrator/ai.myndaix.proposer.plist.example ~/Library/LaunchAgents/ai.myndaix.proposer.plist
+    launchctl load   ~/Library/LaunchAgents/ai.myndaix.proposer.plist
+  Rollback (instant): rm $ORCH/PROPOSER_ENABLED   (or: launchctl unload ~/Library/LaunchAgents/ai.myndaix.proposer.plist)
+  Runs hourly at :45 — offset from the controller-loop (:00) and automerge (:30) to avoid
+  play-review/worktree lock contention. Replace /Users/you with the deploy user's home.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.myndaix.proposer</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/you/code/active/myndaix-runtime/orchestrator/proposer-tick.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Minute</key>
+    <integer>45</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/you/.myndaix/orchestrator/proposer.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/.myndaix/orchestrator/proposer.out</string>
+</dict>
+</plist>

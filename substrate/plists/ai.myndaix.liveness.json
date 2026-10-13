@@ -1,0 +1,9 @@
+{
+  "label": "ai.myndaix.liveness",
+  "roles": ["factory"],
+  "program": ["/bin/bash", "{DEPLOY_CLONE}/substrate/liveness-canary.sh"],
+  "schedule": {"StartInterval": 900},
+  "stdout": "{MYNDAIX_HOME}/state/liveness-canary.out",
+  "env": {"MYNDAIX_HOME": "MYNDAIX_HOME", "PATH": "AGENT_CLI_PATH"},
+  "liveness_max_gap_seconds": 2100
+}

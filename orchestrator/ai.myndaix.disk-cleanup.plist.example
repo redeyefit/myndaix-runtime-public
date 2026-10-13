@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.myndaix.disk-cleanup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/you/code/active/myndaix-runtime/orchestrator/disk-cleanup.sh</string>
+  </array>
+  <!-- Weekly: Sunday 04:00. RunAtLoad=false (maintenance, not boot-critical). launchd runs a
+       missed job at next wake if the machine was asleep at the scheduled time. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key><integer>0</integer>
+    <key>Hour</key><integer>4</integer>
+    <key>Minute</key><integer>0</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>/Users/you/.myndaix/orchestrator/disk-cleanup.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/.myndaix/orchestrator/disk-cleanup.out</string>
+</dict>
+</plist>

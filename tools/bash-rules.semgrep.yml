@@ -1,0 +1,86 @@
+# bash-rules.semgrep.yml — MyndAIX's hard-won bash bugs, encoded as enforceable rules.
+# These are the recurring mistakes written as prose in ~/.claude/rules/*.md — now they fail a check
+# instead of a 3am incident. Run: `semgrep --config tools/bash-rules.semgrep.yml orchestrator substrate`
+# (or via tools/bash-check.sh). Generic/regex mode: robust across shells, precise on false positives.
+# Tune a legitimate hit inline with a trailing `# nosemgrep: <rule-id>` comment.
+rules:
+  - id: bash-python-c-interpolated
+    languages: [generic]
+    paths: {include: ['*.sh', '*.bash']}
+    severity: ERROR
+    message: >-
+      `python3 -c` with a $-interpolated double-quoted string is a shell->Python injection: a value
+      with a quote/newline breaks out into code. Pass values via sys.argv, or use a SINGLE-quoted
+      heredoc (<< 'PY') so bash never expands the body. (rules/bash-scripts.md: Python in Bash.)
+    pattern-regex: 'python3?\s+-c\s+"[^"]*\$'
+
+  - id: bash-curl-pipe-shell
+    languages: [generic]
+    paths: {include: ['*.sh', '*.bash']}
+    severity: ERROR
+    message: >-
+      Piping a network fetch straight into a shell (curl|bash, wget|sh) is remote code execution —
+      the server decides what runs. Download to a file, checksum/inspect, THEN run. (rules/security.md.)
+    pattern-regex: '(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba)?sh\b'
+
+  - id: bash-eval
+    languages: [generic]
+    paths: {include: ['*.sh', '*.bash']}
+    severity: WARNING
+    message: >-
+      `eval` executes its argument as shell code — command injection if any part is external. Almost
+      always avoidable: use arrays, `printf -v`, namerefs, or direct expansion. (rules/bash-scripts.md:
+      "Never eval untrusted input.")
+    # eval as a COMMAND (after a separator) followed by a quote or $ — skips the word "eval" in comments/prose.
+    pattern-regex: '(^|[;&|{( \t])eval\s+["$]'
+
+  # NOTE — `2>/dev/null || true` is deliberately NOT auto-flagged. It fires on ~10 legitimate defensive
+  # uses in this repo alone (mkdir -p, lock cleanup in traps, kill in timeout guards), and a regex can't
+  # tell a benign best-effort call from a masked security/state failure. Auto-flagging it wholesale just
+  # trains you to ignore the linter. It stays a HUMAN/agent-review checklist item (rules/security.md +
+  # new-systems.md): "is this suppression on a security- or state-mutating path?" — context, not regex.
+
+  - id: bash-rm-rf-variable
+    languages: [generic]
+    paths: {include: ['*.sh', '*.bash']}
+    severity: WARNING
+    message: >-
+      `rm -rf` on a variable: if it is empty/unset this wipes the CWD (or /). Guard the var
+      (${VAR:?must be set}), validate the resolved path is under an expected root, or delete a fixed
+      subdir. (rules/bash-scripts.md safety; the destructive-blocker only guards RUNTIME, not commits.)
+    # RECURSIVE rm (-r) of an UNQUOTED $var (word-split/empty-expansion) OR a trailing-slash "$var/"
+    # (empty -> "/"). A quoted `rm -rf "$tmp"` with no trailing slash (the mktemp-trap idiom) and any
+    # `rm -f file` are NOT flagged — those are the safe forms.
+    pattern-regex: 'rm\s+-[a-zA-Z]*r[a-zA-Z]*\s+(\$[A-Za-z_]|"\$[A-Za-z_][A-Za-z0-9_]*/")'
+
+  # NOTE — `kill "$pid"` PID-validation is also NOT auto-flagged: it false-matched `launchctl kill`
+  # (a domain/label op, not a PID) and fired on legit internal `kill -TERM -"$pid"` of the script's own
+  # bg jobs. Whether a PID is validated is a dataflow question, not a regex one. Review item (watchers.md):
+  # validate an EXTERNALLY-derived PID is numeric ([[ "$pid" =~ ^[0-9]+$ ]]) before signalling it.
+
+  - id: bash-date-jf-macos
+    languages: [generic]
+    paths: {include: ['*.sh', '*.bash']}
+    severity: INFO
+    message: >-
+      `date -jf` is macOS/BSD-specific and parses differently (or fails) on GNU date. For date parsing
+      prefer python3, which is portable across the MacBook/Mini. (rules/bash-scripts.md macOS compat.)
+    pattern-regex: '\bdate\s+-jf\b'
+
+  - id: bash-base10-missing-dollar
+    languages: [generic]
+    paths: {include: ['*.sh', '*.bash']}
+    severity: ERROR
+    message: >-
+      `10#name` without `$` is the base-10 guard typo: inside $(( )), the token after `10#` must be
+      DIGITS, so `10#n` crashes with "value too great for base" — the guard then breaks the very
+      script it was protecting. Write `$((10#$n))`. NOTE: this is a whole-file TEXT match (generic
+      mode has no arithmetic-context awareness), so it also fires on the typo form quoted in a
+      comment or string — cite the idiom only in its correct `10#$v` form. (Shipped this exact bug
+      2026-09-03 in mxr-phone cap_take; caught by the test suite, encoded here for check time.)
+    # `10#` followed by an identifier char (not a digit, not `$`). Zero legitimate occurrences
+    # repo-wide at rule-add time. Deliberately UNSCOPED text-level regex: generic mode cannot see
+    # $(( )) structure, and a comment/string citing the broken form is itself worth flagging (it
+    # teaches the typo). The message states the scope, so the FP mode is understood, not implied
+    # away (review #125 finding 5).
+    pattern-regex: '10#[A-Za-z_]'

@@ -1,0 +1,21 @@
+{
+  "_comment": "play-fix.sh trusted repo map. Copy to $MYNDAIX_ORCH/repos.json (default ~/.myndaix/orchestrator/repos.json) — it lives OUTSIDE any repo so a patch can never redefine the repo path or the verify command. 'path' is the ONLY source of the worktree repo path (resolves the repo_id-as-path hazard). 'verify'/'build'/'fail_to_pass_template' are structured argv with ABSOLUTE argv0 (the verify env is wiped: only PATH/HOME/TMPDIR set, HOME/TMPDIR = per-run scratch). A repo absent here fails closed (ABORTED). No verify command -> UNVERIFIED (never a clean signal).",
+
+  "_verify_note": "REGRESSION_CHECK_ONLY is only reachable when an existing test FAILS on the clean base (proves a real bug) and passes after the fix, while the verify suite keeps passing. The failing test is supplied PER FIX as play-fix.sh's optional 4th arg (a relative in-repo test path), substituted into the {TEST} slot of fail_to_pass_template — so the selector can only choose WHICH test runs, never inject a command. With no selector, fail_to_pass is null -> UNVERIFIED. Use a relative PYTHONPATH (e.g. PYTHONPATH=src) so it resolves against the patched verify worktree, not the install path. Note: bare `pytest` will not collect this repo's standalone async tests — invoke the test file directly with python.",
+
+  "myndaix-runtime": {
+    "path": "/Users/you/code/active/myndaix-runtime",
+    "verify": ["/usr/bin/env", "PYTHONPATH=src", "/Users/you/code/active/myndaix-runtime/.venv/bin/python", "tests/test_runner.py"],
+    "build": null,
+    "fail_to_pass": null,
+    "fail_to_pass_template": ["/usr/bin/env", "PYTHONPATH=src", "/Users/you/code/active/myndaix-runtime/.venv/bin/python", "{TEST}"]
+  },
+
+  "fieldvision": {
+    "path": "/Users/you/code/active/fieldvision",
+    "verify": ["/usr/bin/xcodebuild", "test", "-scheme", "FieldVision"],
+    "build": null,
+    "fail_to_pass": null,
+    "fail_to_pass_template": null
+  }
+}

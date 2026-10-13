@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  docs-only PR auto-merge gate (north-star rung 4). OFF unless $ORCH/AUTOMERGE_ENABLED exists.
+  Install (AFTER the prereqs in docs/automerge-design.md §0 + a dry-run):
+    cp orchestrator/ai.myndaix.automerge.plist.example ~/Library/LaunchAgents/ai.myndaix.automerge.plist
+    launchctl load   ~/Library/LaunchAgents/ai.myndaix.automerge.plist
+  Rollback (instant): launchctl unload ~/Library/LaunchAgents/ai.myndaix.automerge.plist  (+ git revert any merge)
+  Runs hourly at :30 (offset from the controller-loop at :00 to avoid play-review lock contention).
+  Edit the wrapper path if your checkout is elsewhere.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.myndaix.automerge</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/you/code/active/myndaix-runtime/orchestrator/automerge-tick.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/you/.myndaix/orchestrator/automerge.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/.myndaix/orchestrator/automerge.out</string>
+</dict>
+</plist>

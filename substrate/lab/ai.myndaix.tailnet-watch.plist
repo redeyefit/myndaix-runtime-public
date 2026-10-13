@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  SITE CONFIG — edit before copying (see substrate/lab/README.md):
+    * TW_HOST: your factory node's tailnet IP (the script fails fast without it)
+    * /Users/you: your home directory (launchd does not expand $HOME)
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.myndaix.tailnet-watch</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/you/.myndaix/bin/tailnet-watch.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>TW_HOST</key>
+    <string>REPLACE-ME-factory-tailnet-ip</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/you/.myndaix/state/tailnet-watch.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/.myndaix/state/tailnet-watch.err</string>
+</dict>
+</plist>

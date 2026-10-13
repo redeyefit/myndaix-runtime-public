@@ -1,0 +1,10 @@
+{
+  "label": "ai.myndaix.proposer",
+  "roles": ["factory"],
+  "mutating": true,
+  "program": ["/bin/bash", "{DEPLOY_CLONE}/orchestrator/proposer-tick.sh"],
+  "schedule": {"StartCalendarInterval": {"Minute": 45}},
+  "stdout": "{MYNDAIX_HOME}/orchestrator/proposer.out",
+  "env": {"MYNDAIX_DSN": "MYNDAIX_DSN", "MYNDAIX_HOME": "MYNDAIX_HOME", "PATH": "AGENT_CLI_PATH"},
+  "liveness_max_gap_seconds": 4500
+}

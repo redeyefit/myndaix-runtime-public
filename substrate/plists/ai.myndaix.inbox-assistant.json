@@ -1,0 +1,10 @@
+{
+  "label": "ai.myndaix.inbox-assistant",
+  "roles": ["factory"],
+  "program": ["/bin/bash", "{DEPLOY_CLONE}/orchestrator/inbox-assistant-tick.sh"],
+  "schedule": {"StartCalendarInterval": {"Hour": 6, "Minute": 30}},
+  "run_at_load": false,
+  "stdout": "{MYNDAIX_HOME}/orchestrator/inbox-assistant.out",
+  "env": {"MYNDAIX_DSN": "MYNDAIX_DSN", "MYNDAIX_HOME": "MYNDAIX_HOME", "INBOX_ACCOUNTS": "INBOX_ACCOUNTS", "INBOX_OP_VAULT": "INBOX_OP_VAULT", "INBOX_BACKFILL_DAYS": "INBOX_BACKFILL_DAYS", "INBOX_DRIVE_ACCOUNT": "INBOX_DRIVE_ACCOUNT", "INBOX_NOTION_DB": "INBOX_NOTION_DB", "INBOX_IMESSAGE_TO": "INBOX_IMESSAGE_TO", "PATH": "AGENT_CLI_PATH"},
+  "liveness_max_gap_seconds": 90000
+}

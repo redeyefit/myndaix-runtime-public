@@ -1,0 +1,23 @@
+{
+  "label": "ai.myndaix.ledger-backup",
+  "roles": [
+    "factory"
+  ],
+  "program": [
+    "/bin/bash",
+    "{DEPLOY_CLONE}/substrate/ledger-backup.sh"
+  ],
+  "schedule": {
+    "StartCalendarInterval": {
+      "Hour": 4,
+      "Minute": 15
+    }
+  },
+  "run_at_load": false,
+  "stdout": "{MYNDAIX_HOME}/state/ledger-backup.out",
+  "env": {
+    "MYNDAIX_HOME": "MYNDAIX_HOME",
+    "PATH": "AGENT_CLI_PATH"
+  },
+  "liveness_max_gap_seconds": 93600
+}

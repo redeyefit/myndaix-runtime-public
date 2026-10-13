@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  controller-loop ("the brain") — proactive review scheduler. north-star rung 3.
+  Install (after the dry-run + manual-tick checks in docs/controller-loop-design.md §Runbook):
+    cp orchestrator/ai.myndaix.controller.plist.example ~/Library/LaunchAgents/ai.myndaix.controller.plist
+    launchctl load   ~/Library/LaunchAgents/ai.myndaix.controller.plist
+  Rollback (instant, one command):
+    launchctl unload ~/Library/LaunchAgents/ai.myndaix.controller.plist
+  Hourly + RunAtLoad mirrors the live ai.myndaix.fix-sweep agent. Edit the wrapper path
+  if your runtime checkout is elsewhere.
+
+  AbandonProcessGroup=true is LOAD-BEARING, not optional: the tick dispatches play-review.sh
+  in FRONT mode, which nohup-detaches the review WORKER and returns fast (fire-and-forget
+  reconciler). Without this key, launchd's default is to KILL every remaining process in the
+  job's process group when the short-lived tick exits — which reaps the still-running detached
+  worker (and its in-flight `mxr` pool calls) seconds after dispatch. Symptom: every review
+  aborts instantly on the canary ("kilabz unreachable"), no job ever reaches the pool, and the
+  review cursor never advances. true tells launchd to leave the detached worker alone.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.myndaix.controller</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/you/code/active/myndaix-runtime/orchestrator/controller-tick.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <!-- Keep launchd from killing the nohup-detached play-review worker when this short-lived
+       tick exits (see the header note). Without it the review backstop never completes. -->
+  <key>AbandonProcessGroup</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/you/.myndaix/orchestrator/controller.out</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/you/.myndaix/orchestrator/controller.out</string>
+</dict>
+</plist>

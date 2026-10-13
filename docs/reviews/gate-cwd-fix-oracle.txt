@@ -1,0 +1,50 @@
+I have reviewed the provided diff. The approach of using a temporary, empty directory to prevent the agent from inadvertently reading the base tree is structurally sound and effectively neutralizes the misleading tree issue.
+
+However, based on your requested areas of focus, there are a few edge cases, a potential resource leak, and behavioral nuances to address. Here is my breakdown:
+
+### 1. Correctness & Edge Cases (Resource Leak & Truthiness)
+The `tempfile.mkdtemp()` and cleanup logic is generally correct, but there are two edge cases in the setup block:
+
+*   **`scratch` Directory Leak on `mkdtemp` Failure:**
+    Because `scratch_cwd = tempfile.mkdtemp(...)` is called **outside** the `try` block, if `mkdtemp` fails (e.g., `OSError` due to lack of disk space or inode exhaustion), the exception will propagate before the `try` block is reached. This means the `finally` block will **never execute**, and the `scratch` directory created just one line prior by `_make_scratch_home` will be permanently leaked on the host.
+    *Fix:* Initialize `scratch_cwd = None` outside the `try` block, and move the `mkdtemp` call inside it.
+*   **Empty String `worktree_path` Causes Silent Fallback:**
+    The condition `if cwd is None:` strictly checks for `None`. If `job.worktree_path` happens to be an empty string `""` (e.g., via JSON deserialization, frontend form, or config defaults), `scratch_cwd` will be set to `None`. When passing `cwd=cwd or scratch_cwd` to the subprocess, `"" or None` evaluates to `None`. Under the hood, `create_subprocess_exec` treats `cwd=None` as an instruction to **inherit the parent process's cwd**, completely bypassing your fix!
+    *Fix:* Use `if not cwd:` instead to safely catch `""` and generate a temp directory.
+
+### 2. Is empty-cwd sufficient to fix the false-phantom triage?
+It fixes the *mechanism* of reading the wrong tree, but you must ensure the agent's LLM logic handles `ENOENT` (File not found) correctly.
+If a triage agent verifies findings by running `cat src/file.py` or using a tool to parse the AST, it will now get "File not found" in the empty cwd. If the agent's logic assumes "If the file isn't there, the user must have deleted it in this PR," it will **still** flag the finding as "phantom" (since findings on deleted files are logically invalid).
+*Mitigation:* Ensure the system prompt for triage agents explicitly tells them: *"You are running in a worktree-less environment. You cannot read the files from disk. Rely entirely on the provided diff."* Otherwise, the lack of files might be misinterpreted as file deletions.
+
+### 3. CLI agents that LEGITIMATELY need the repo cwd
+If any worktree-less agent currently relies on the inherited repository root to access shared configuration files (e.g., `.pylintrc`, `tox.ini`), helper shell scripts (`../scripts/util.sh`), or custom binaries in the repo, **they will break**. The empty `/tmp/mdx-cli-cwd.*` directory will strip their access to these tools. You should verify that kilabz, oracle, and lobster do not implicitly depend on static configuration files located in the MyndAIX base repository.
+
+### 4. Security
+This strictly **improves** the security posture. By confining worktree-less jobs to an empty directory, you shrink the prompt-injection surface. It removes the risk of an untrusted LLM generation interacting with or exfiltrating `.env` files, secrets, or platform source code from the runtime's base directory.
+
+### 5. Test Suite Robustness
+The test logic is robust. Specifically, the assertion `assert os.path.basename(ran_in).startswith("mdx-cli-cwd.")` safely handles macOS temporary directory symlinks (e.g., `/var` resolving to `/private/var`), because `os.path.realpath` resolves parent directories but preserves the `mkdtemp` leaf directory name.
+
+---
+
+### Recommended Code Adjustment
+To fix the leak and empty string edge cases, I recommend adjusting the setup logic slightly:
+
+```python
+    env, scratch = _make_scratch_home(spec, _cli_env(spec))
+    cwd = job.worktree_path
+    scratch_cwd = None
+    started = time.monotonic()
+    
+    try:
+        # Move mkdtemp inside try to prevent `scratch` leak on OSError
+        # Use `if not cwd` to prevent "" evaluating to None in subprocess
+        if not cwd:
+            scratch_cwd = tempfile.mkdtemp(prefix="mdx-cli-cwd.")
+            
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                ...
+                cwd=cwd or scratch_cwd,
+```
